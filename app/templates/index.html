@@ -12,14 +12,22 @@
           <label>Posted to<input type="date" name="posted_to" value="{{ form.posted_to }}" required></label>
           <button type="submit">Search SAM.gov</button>
         </div>
-        <p class="hint">One request per search · Up to 10 results · Date range up to 365 days</p>
+        <details class="filters" {{ 'open' if form.agency or form.naics or form.set_aside or form.state or form.deadline_from or form.notice_type }}><summary>More search filters</summary><div class="fields">
+          <label>Agency / organization<input name="agency" value="{{ form.agency }}" maxlength="200" placeholder="Department of the Navy"></label>
+          <label>NAICS code<input name="naics" value="{{ form.naics }}" pattern="[0-9]{6}" maxlength="6" placeholder="541512"></label>
+          <label>Set-aside<select name="set_aside"><option value="">Any set-aside</option>{% for code, label in set_asides.items() %}<option value="{{ code }}" {{ 'selected' if form.set_aside == code }}>{{ label }}</option>{% endfor %}</select></label>
+          <label>Place of performance<select name="state"><option value="">Any state / territory</option>{% for state in states %}<option {{ 'selected' if form.state == state }}>{{ state }}</option>{% endfor %}</select></label>
+          <label>Notice type<select name="notice_type"><option value="">All notice types</option>{% for code, label in notice_types.items() %}<option value="{{ code }}" {{ 'selected' if form.notice_type == code }}>{{ label }}</option>{% endfor %}</select></label>
+          <label>Deadline from<input name="deadline_from" type="date" value="{{ form.deadline_from }}"></label><label>Deadline to<input name="deadline_to" type="date" value="{{ form.deadline_to }}"></label>
+        </div></details>
+        <p class="hint">One request per page · Up to 10 results · Date ranges up to 365 days</p>
       </form>
     </section>
     {% if error %}<div role="alert" class="error">{{ error }}</div>{% endif %}
     {% if result is not none %}
       <section aria-labelledby="results-heading">
         <h2 id="results-heading">{{ result.opportunities|length }} shown <span class="muted">of {{ result.total }} matching notices</span></h2>
-        <p class="muted">First page from SAM.gov; results may include sources sought, awards, or closed notices. Check notice type and deadlines before evaluating a bid.</p>
+        <p class="muted">Page {{ page + 1 }} from SAM.gov. Results may include sources sought, awards, or closed notices. Check notice type and deadlines before evaluating a bid.</p>
         {% for opp in result.opportunities %}
         <article class="panel opportunity">
           <span class="eyebrow">{{ opp.type or 'Notice type unavailable' }}</span>
@@ -34,6 +42,7 @@
           <p class="hint">Full description and attachments: {% if opp.url %}<a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer">view the original SAM.gov notice ↗</a>{% else %}no original link available.{% endif %}</p>
         </article>
         {% else %}<div class="panel"><h3>No matching notices found</h3><p>Try a broader title keyword or a wider posted-date range.</p></div>{% endfor %}
+        <nav class="pagination" aria-label="Result pages">{% if previous %}<a class="button secondary" href="{{ previous }}">← Previous page</a>{% endif %}<span>Page {{ page + 1 }}</span>{% if following %}<a class="button secondary" href="{{ following }}">Next page →</a>{% endif %}</nav>
       </section>
     {% elif not error %}
       <section class="empty"><h2>A focused first step.</h2><p>Choose a keyword and posted dates to retrieve real notices.<br>Leave the keyword blank to explore the date range.</p></section>

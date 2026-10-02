@@ -61,7 +61,7 @@ def normalize_opportunity(record):
     }
 
 
-def search_opportunities(api_key: str, keyword: str, posted_from: date, posted_to: date):
+def search_opportunities(api_key: str, keyword: str, posted_from: date, posted_to: date, *, filters=None, page=0):
     if not api_key or not api_key.strip():
         raise SamError("Add your SAM.gov API key to the local .env file, then restart the app.")
     params = {
@@ -69,10 +69,13 @@ def search_opportunities(api_key: str, keyword: str, posted_from: date, posted_t
         "postedFrom": posted_from.strftime("%m/%d/%Y"),
         "postedTo": posted_to.strftime("%m/%d/%Y"),
         "limit": PAGE_SIZE,
-        "offset": 0,
+        "offset": page,
     }
     if keyword:
         params["title"] = keyword
+    if filters:
+        allowed = {"organizationName", "ncode", "typeOfSetAside", "state", "ptype", "rdlfrom", "rdlto"}
+        params.update({key: value for key, value in filters.items() if key in allowed})
     try:
         # No automatic retries: each search consumes the user's API quota.
         # Redirects are disabled so credentials stay with the official endpoint.

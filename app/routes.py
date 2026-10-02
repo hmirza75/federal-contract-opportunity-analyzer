@@ -2,11 +2,12 @@
 
 from datetime import date, timedelta
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from . import db
 from .deadlines import deadline_info, INACTIVE_STATUSES
+from .search_filters import FIELDS, NOTICE_TYPES, SET_ASIDES, STATES, validate_filters
 
 from .sam_client import SamError, search_opportunities
 
@@ -37,6 +38,8 @@ def index():
         "posted_from": request.args.get("posted_from", (today - timedelta(days=30)).isoformat()),
         "posted_to": request.args.get("posted_to", today.isoformat()),
     }
+    form.update({field: request.args.get(field, "").strip() for field in FIELDS})
+    page = 0
     result, error, status = None, None, 200
     if request.args.get("search") == "1":
         try:
@@ -46,18 +49,25 @@ def index():
                 raise ValueError("Invalid date range")
             if len(form["keyword"]) > 200:
                 raise ValueError("Keyword too long")
+            filters = validate_filters(form)
+            page = int(request.args.get("page", "0"))
+            if not 0 <= page <= 10000:
+                raise ValueError("Invalid page")
         except ValueError:
-            error = "Enter valid posted dates (From before To, at most 365 days apart) and a keyword of at most 200 characters."
+            error = "Check your filters: valid ordered date ranges up to 365 days, both deadline dates, a six-digit NAICS, and names up to 200 characters are required when supplied."
             status = 400
         else:
             try:
-                result = search_opportunities(current_app.config["SAM_API_KEY"], form["keyword"], start, end)
+                result = search_opportunities(current_app.config["SAM_API_KEY"], form["keyword"], start, end, filters=filters, page=page)
             except SamError as exc:
                 error, status = str(exc), 503
     if result:
         for item in result.opportunities:
             item["save_token"] = signer().dumps(item) if item["notice_id"] else ""
-    return render_template("index.html", form=form, result=result, error=error,
+    previous = url_for("main.index", **form, search=1, page=page-1) if page > 0 else None
+    following = url_for("main.index", **form, search=1, page=page+1) if result and (page+1)*10 < result.total and page < 10000 else None
+    return render_template("index.html", form=form, result=result, error=error, page=page,
+                           previous=previous, following=following, states=STATES, set_asides=SET_ASIDES, notice_types=NOTICE_TYPES,
                            key_configured=bool(current_app.config["SAM_API_KEY"].strip())), status
 
 
@@ -119,3 +129,15 @@ def dashboard():
     counts = {s: sum(i["status"] == s for i in items) for s in db.STATUSES}
     return render_template("dashboard.html", total=len(items), upcoming=upcoming, overdue=overdue,
                            unknown=sum(i["due"]["kind"] == "unknown" for i in open_items), counts=counts)
+
+
+@main.get("/export/<format>")
+def export_saved(format):
+    from .exports import export_csv, export_excel
+    query, status = request.args.get("q", "").strip(), request.args.get("status", "")
+    if len(query) > 200 or (status and status not in db.STATUSES) or format not in {"csv", "xlsx"}:
+        abort(400)
+    items = db.list_opportunities(query, status)
+    buffer = export_csv(items) if format == "csv" else export_excel(items)
+    mimetype = "text/csv" if format == "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return send_file(buffer, mimetype=mimetype, as_attachment=True, download_name=f"saved-opportunities-{date.today()}.{format}")
