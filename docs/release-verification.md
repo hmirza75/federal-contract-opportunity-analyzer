@@ -15,4 +15,9 @@
 - The dashboard and saved detail/profile workflows were inspected in the browser.
 - No live request results or API credentials are used as automated test fixtures.
 
-Fresh-install and GitHub Actions results are recorded after their respective checks finish.
+- A clean Git archive was extracted into a separate directory with a new virtual environment.
+  All locked dependencies installed, all 56 tests passed again, and the landing page and empty
+  dashboard returned HTTP 200 without a key or private data copied from the development workspace.
+- The full committed Git history was checked for the configured SAM API key; no match was found.
+  `.env`, the SQLite database, session secret, and virtual environment are excluded from Git.
+- GitHub Actions results will be available on the repository's Actions tab after publication.
