@@ -1,8 +1,55 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Federal Contract Opportunity Analyzer</title>
-<h1>Federal Contract Opportunity Analyzer</h1>
-<p>Milestone 1: connecting to SAM.gov.</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Federal Contract Opportunity Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header><div class="wrap"><span class="eyebrow">FEDERAL CONTRACT OPPORTUNITY ANALYZER</span>
+    <h1>Find your next opportunity.</h1>
+    <p>Search federal contracting notices directly from SAM.gov.</p>
+  </div></header>
+  <main class="wrap">
+    <section class="panel" aria-labelledby="search-heading">
+      <div class="section-heading"><h2 id="search-heading">Search opportunities</h2><span class="badge">Milestone 1</span></div>
+      <p class="muted">Search notice titles, for example “help desk”, “software”, or “cybersecurity”.</p>
+      {% if not key_configured %}<p class="notice">Setup needed: add <code>SAM_API_KEY</code> to your local <code>.env</code> file and restart the app. No sample opportunities are displayed.</p>{% endif %}
+      <form method="get" action="/">
+        <input type="hidden" name="search" value="1">
+        <div class="fields">
+          <label class="keyword">Title keyword<input name="keyword" value="{{ form.keyword }}" maxlength="200" placeholder="IT support"></label>
+          <label>Posted from<input type="date" name="posted_from" value="{{ form.posted_from }}" required></label>
+          <label>Posted to<input type="date" name="posted_to" value="{{ form.posted_to }}" required></label>
+          <button type="submit">Search SAM.gov</button>
+        </div>
+        <p class="hint">One request per search · Up to 10 results · Date range up to 365 days</p>
+      </form>
+    </section>
+    {% if error %}<div role="alert" class="error">{{ error }}</div>{% endif %}
+    {% if result is not none %}
+      <section aria-labelledby="results-heading">
+        <h2 id="results-heading">{{ result.opportunities|length }} shown <span class="muted">of {{ result.total }} matching notices</span></h2>
+        <p class="muted">First page from SAM.gov; results may include sources sought, awards, or closed notices. Check notice type and deadlines before evaluating a bid.</p>
+        {% for opp in result.opportunities %}
+        <article class="panel opportunity">
+          <span class="eyebrow">{{ opp.type or 'Notice type unavailable' }}</span>
+          <h3>{% if opp.url %}<a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer">{{ opp.title }}</a>{% else %}{{ opp.title }}{% endif %}</h3>
+          <p class="agency">{{ opp.agency or 'Agency not provided' }}</p>
+          <dl>
+            {% for label, value in [('Solicitation', opp.solicitation), ('NAICS', opp.naics), ('Set-aside', opp.set_aside), ('Place of performance', opp.location), ('Posted', opp.posted), ('Response deadline', opp.deadline), ('Active (as reported)', opp.active)] %}
+            <div><dt>{{ label }}</dt><dd>{{ value or 'Not provided' }}</dd></div>
+            {% endfor %}
+          </dl>
+          <p class="hint">Full description and attachments: {% if opp.url %}<a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer">view the original SAM.gov notice ↗</a>{% else %}no original link available.{% endif %}</p>
+        </article>
+        {% else %}<div class="panel"><h3>No matching notices found</h3><p>Try a broader title keyword or a wider posted-date range.</p></div>{% endfor %}
+      </section>
+    {% elif not error %}
+      <section class="empty"><h2>A focused first step.</h2><p>Choose a keyword and posted dates to retrieve real notices.<br>Leave the keyword blank to explore the date range.</p></section>
+    {% endif %}
+    <footer>Source: SAM.gov · Independent learning project · Dates are displayed as supplied by SAM.gov.<br>Searches are not saved yet. Confirm all requirements and deadlines in the original notice.</footer>
+  </main>
+</body>
 </html>
