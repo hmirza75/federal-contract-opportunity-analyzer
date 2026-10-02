@@ -43,6 +43,7 @@ def normalize_opportunity(record):
     # Construct an official link instead of rendering arbitrary upstream URLs.
     url = f"https://sam.gov/opp/{notice_id}/view" if re.fullmatch(r"[a-fA-F0-9]{32}", notice_id) else ""
     return {
+        "notice_id": notice_id if url else "",
         "title": text(record.get("title")) or "Untitled notice",
         "agency": text(record.get("fullParentPathName")) or text(record.get("department")),
         "solicitation": text(record.get("solicitationNumber")),
@@ -50,6 +51,8 @@ def normalize_opportunity(record):
         "set_aside": text(record.get("typeOfSetAsideDescription")) or text(record.get("setAside"))
         or text(record.get("typeOfSetAside")) or text(record.get("setAsideCode")),
         "location": ", ".join(parts),
+        "state": text(location.get("state", {}).get("code")) if isinstance(location.get("state"), dict) else "",
+        "set_aside_code": text(record.get("typeOfSetAside")) or text(record.get("setAsideCode")),
         "posted": text(record.get("postedDate")),
         "deadline": text(record.get("responseDeadLine")) or text(record.get("reponseDeadLine")),
         "type": text(record.get("type")),

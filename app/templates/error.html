@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block heading %}Something needs attention.{% endblock %}
+{% block content %}<section class="panel"><p role="alert">{{ message }}</p><a href="{{ url_for('main.index') }}">Return to search</a></section>{% endblock %}

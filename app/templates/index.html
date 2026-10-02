@@ -1,22 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Federal Contract Opportunity Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <header><div class="wrap"><span class="eyebrow">FEDERAL CONTRACT OPPORTUNITY ANALYZER</span>
-    <h1>Find your next opportunity.</h1>
-    <p>Search federal contracting notices directly from SAM.gov.</p>
-  </div></header>
-  <main class="wrap">
+{% extends 'base.html' %}
+{% block content %}
     <section class="panel" aria-labelledby="search-heading">
-      <div class="section-heading"><h2 id="search-heading">Search opportunities</h2><span class="badge">Milestone 1</span></div>
+      <div class="section-heading"><h2 id="search-heading">Search opportunities</h2><a href="/saved">View saved opportunities →</a></div>
       <p class="muted">Search notice titles, for example “help desk”, “software”, or “cybersecurity”.</p>
-      {% if not key_configured %}<p class="notice">Setup needed: add <code>SAM_API_KEY</code> to your local <code>.env</code> file and restart the app. No sample opportunities are displayed.</p>{% endif %}
-      <form method="get" action="/">
+      {% if not key_configured %}<p class="notice">Setup needed: add <code>SAM_API_KEY</code> to your local <code>.env</code> file and restart the app. You can still use your saved workspace offline.</p>{% endif %}
+      <form method="get" action="/" data-search>
         <input type="hidden" name="search" value="1">
         <div class="fields">
           <label class="keyword">Title keyword<input name="keyword" value="{{ form.keyword }}" maxlength="200" placeholder="IT support"></label>
@@ -42,6 +30,7 @@
             <div><dt>{{ label }}</dt><dd>{{ value or 'Not provided' }}</dd></div>
             {% endfor %}
           </dl>
+          {% if opp.save_token %}<form method="post" action="{{ url_for('main.save') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="opportunity" value="{{ opp.save_token }}"><button>Save opportunity</button></form>{% endif %}
           <p class="hint">Full description and attachments: {% if opp.url %}<a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer">view the original SAM.gov notice ↗</a>{% else %}no original link available.{% endif %}</p>
         </article>
         {% else %}<div class="panel"><h3>No matching notices found</h3><p>Try a broader title keyword or a wider posted-date range.</p></div>{% endfor %}
@@ -49,7 +38,4 @@
     {% elif not error %}
       <section class="empty"><h2>A focused first step.</h2><p>Choose a keyword and posted dates to retrieve real notices.<br>Leave the keyword blank to explore the date range.</p></section>
     {% endif %}
-    <footer>Source: SAM.gov · Independent learning project · Dates are displayed as supplied by SAM.gov.<br>Searches are not saved yet. Confirm all requirements and deadlines in the original notice.</footer>
-  </main>
-</body>
-</html>
+{% endblock %}

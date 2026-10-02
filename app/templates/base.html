@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Federal Contract Opportunity Analyzer{% endblock %}</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap nav-inner"><a class="brand" href="{{ url_for('main.index') }}">FCO<span> / Analyzer</span></a><div class="nav-links">
+<a href="{{ url_for('main.index') }}" {% if request.endpoint == 'main.index' %}aria-current="page"{% endif %}>Discover</a>
+<a href="{{ url_for('main.dashboard') }}" {% if request.endpoint == 'main.dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+<a href="{{ url_for('main.saved') }}" {% if request.endpoint == 'main.saved' %}aria-current="page"{% endif %}>Saved</a>
+</div><span class="local">LOCAL WORKSPACE</span></div></nav>
+<header><div class="wrap"><span class="eyebrow">FEDERAL CONTRACT OPPORTUNITY ANALYZER</span><h1>{% block heading %}Find your next opportunity.{% endblock %}</h1><p>{% block subtitle %}Search real notices. Keep your research organized.{% endblock %}</p></div></header>
+<main class="wrap">
+{% for category, message in get_flashed_messages(with_categories=true) %}<p role="status" class="{{ 'error' if category == 'error' else 'notice' }}">{{ message }}</p>{% endfor %}
+{% block content %}{% endblock %}
+<footer>Independent project · Source: SAM.gov · Local research workspace<br>Saved records are snapshots. Verify current requirements, amendments, and deadlines in the original notice.</footer>
+</main></body></html>

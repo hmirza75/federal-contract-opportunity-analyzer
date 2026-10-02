@@ -1,0 +1,2 @@
+<dl>{% for label, value in [('Solicitation', opp.solicitation), ('NAICS', opp.naics), ('Set-aside', opp.set_aside), ('Place of performance', opp.location), ('Posted', opp.posted), ('Response deadline', opp.deadline), ('Active (as reported)', opp.active)] %}
+<div><dt>{{ label }}</dt><dd>{{ value or 'Not provided' }}</dd></div>{% endfor %}</dl>

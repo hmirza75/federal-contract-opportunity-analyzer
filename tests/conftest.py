@@ -5,8 +5,9 @@ from app import create_app
 
 
 @pytest.fixture
-def client():
-    return create_app({"TESTING": True, "SAM_API_KEY": "synthetic-test-key"}).test_client()
+def client(tmp_path):
+    return create_app({"TESTING": True, "SAM_API_KEY": "synthetic-test-key",
+                       "DATABASE": str(tmp_path / "test.sqlite3"), "SECRET_KEY": "test-session-secret"}).test_client()
 
 
 @pytest.fixture(autouse=True)
