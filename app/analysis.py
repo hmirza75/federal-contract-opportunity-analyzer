@@ -11,7 +11,7 @@ MAX_TEXT = 150000
 RULES = {
     "Scope of work": r"\b(scope|statement of work|performance work statement|shall provide|contractor shall|services|deliverables?|tasks?)\b",
     "Eligibility requirements": r"\b(eligible|eligibility|set.aside|small business|certif\w*|NAICS|SAM registration|registered in SAM|clearance|citizenship|HUBZone|8\(a\))\b",
-    "Important dates": r"\b(deadline|due|closing|site visit|questions? by|period of performance|option year|[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}|20[0-9]{2}-[0-9]{2}-[0-9]{2}|January|February|March|April|May|June|July|August|September|October|November|December)\b",
+    "Important dates": r"\b(deadline|due|closing|site visit|questions? by|period of performance|option years?|base years?|[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}|20[0-9]{2}-[0-9]{2}-[0-9]{2}|January|February|March|April|May|June|July|August|September|October|November|December)\b",
     "Required documents": r"\b(submit|submission|proposal|quotation|quote|resume|past performance|attachment|SF\s?1449|SF\s?33|representations|certifications|volume)\b",
     "Technical requirements": r"\b(technical|software|hardware|network\w*|cyber\w*|security|NIST|CMMC|FedRAMP|cloud|integration|Windows|Linux|SLA|uptime|encryption|help\s?desk)\b",
     "Potential bid concerns": r"\b(sole.source|brand.name|only one source|clearance|mandatory|must|shall not|not eligible|restricted|incumbent|on.site|bond|insurance|liquidated damages)\b",
@@ -51,7 +51,7 @@ def analyze_text(text):
         return None
     clipped = len(text) > MAX_TEXT
     # Split into evidence units, retaining source order; never invent a summary sentence.
-    passages = [p.strip() for p in re.split(r"\n\s*\n|(?<=[.!?])\s+(?=[A-Z])", text[:MAX_TEXT]) if p.strip()]
+    passages = [p.strip() for p in re.split(r"\n\s*\n|(?<!U\.S\.)(?<!U\.S\.C\.)(?<!e\.g\.)(?<!i\.e\.)(?<=[.!?])\s+(?=[A-Z])", text[:MAX_TEXT]) if p.strip()]
     evidence = [{"ref": f"P{i+1}", "text": p} for i, p in enumerate(passages)]
     sections = []
     for name, rule in RULES.items():

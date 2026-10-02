@@ -8,11 +8,12 @@ from openpyxl.styles import Font, PatternFill, Alignment
 COLUMNS = (("title", "Title"), ("agency", "Agency"), ("solicitation", "Solicitation"), ("naics", "NAICS"),
            ("set_aside", "Set-aside"), ("location", "Location"), ("posted", "Posted"), ("deadline", "Response deadline"),
            ("type", "Notice type"), ("status", "Review status"), ("notes", "Notes"), ("url", "SAM.gov URL"),
-           ("saved_at", "Saved at (UTC)"), ("fetched_at", "Source snapshot (UTC)"))
+           ("saved_at", "Saved at (UTC)"), ("fetched_at", "Source snapshot (UTC)"),
+           ("match_score", "Relevance score (not eligibility)"), ("match_evidence", "Score explanation"))
 
 
 def safe_text(value):
-    value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(value or ""))
+    value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", "" if value is None else str(value))
     return "'" + value if value.lstrip().startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")) else value
 
 

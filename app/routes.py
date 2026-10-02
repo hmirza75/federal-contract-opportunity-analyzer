@@ -145,6 +145,11 @@ def export_saved(format):
     if len(query) > 200 or (status and status not in db.STATUSES) or format not in {"csv", "xlsx"}:
         abort(400)
     items = db.list_opportunities(query, status)
+    profile = db.get_profile()
+    for item in items:
+        match = score_opportunity(item, profile)
+        item["match_score"] = match["score"]
+        item["match_evidence"] = "; ".join(c["name"] + ": " + c["detail"] for c in match["components"])
     buffer = export_csv(items) if format == "csv" else export_excel(items)
     mimetype = "text/csv" if format == "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return send_file(buffer, mimetype=mimetype, as_attachment=True, download_name=f"saved-opportunities-{date.today()}.{format}")

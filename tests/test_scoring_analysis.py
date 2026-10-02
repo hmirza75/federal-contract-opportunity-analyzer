@@ -57,6 +57,28 @@ def test_html_cleaning():
     assert html_to_text('<p>Scope &amp; work</p><script>evil()</script><style>hidden</style>') == "Scope & work"
 
 
+def test_common_government_abbreviations_preserve_context():
+    report = analyze_text("The U.S. Army shall provide software. This is a base year with four option years.")
+    assert report["summary"][0]["text"] == "The U.S. Army shall provide software."
+    assert next(s for s in report["sections"] if s["name"] == "Important dates")["passages"]
+
+
+def test_text_based_pdf_extraction():
+    from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
+    book = PdfWriter()
+    page = book.add_blank_page(width=400, height=400)
+    font = DictionaryObject({NameObject('/Type'): NameObject('/Font'), NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+    page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject({NameObject('/F1'): font})})
+    stream = DecodedStreamObject()
+    stream.set_data(b'BT /F1 12 Tf 30 350 Td (SYNTHETIC TEST: Contractor shall provide software.) Tj ET')
+    page[NameObject('/Contents')] = stream
+    buffer = io.BytesIO()
+    book.write(buffer)
+    buffer.seek(0)
+    text = extract_upload(FileStorage(stream=buffer, filename='synthetic.pdf'))
+    assert '[Page 1]' in text and 'Contractor shall provide software.' in text
+
+
 def test_upload_validation_and_blank_pdf():
     with pytest.raises(ValueError, match=".txt or"):
         extract_upload(FileStorage(stream=io.BytesIO(b"bad"), filename="document.exe"))

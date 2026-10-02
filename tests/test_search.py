@@ -52,8 +52,8 @@ def test_invalid_input_never_calls_api(client, changes):
     assert client.get("/", query_string={**QUERY, **changes}).status_code == 400
 
 
-def test_missing_key_never_calls_api():
-    client = create_app({"TESTING": True, "SAM_API_KEY": ""}).test_client()
+def test_missing_key_never_calls_api(tmp_path):
+    client = create_app({"TESTING": True, "SAM_API_KEY": "", "DATABASE": str(tmp_path / "missing-key.sqlite3"), "SECRET_KEY": "test-secret"}).test_client()
     response = client.get("/", query_string=QUERY)
     assert response.status_code == 503
     assert b"Add your SAM.gov API key" in response.data
