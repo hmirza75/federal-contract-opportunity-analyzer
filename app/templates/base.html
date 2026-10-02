@@ -9,6 +9,7 @@
 <a href="{{ url_for('main.index') }}" {% if request.endpoint == 'main.index' %}aria-current="page"{% endif %}>Discover</a>
 <a href="{{ url_for('main.dashboard') }}" {% if request.endpoint == 'main.dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
 <a href="{{ url_for('main.saved') }}" {% if request.endpoint == 'main.saved' %}aria-current="page"{% endif %}>Saved</a>
+<a href="{{ url_for('main.profile') }}" {% if request.endpoint == 'main.profile' %}aria-current="page"{% endif %}>Profile</a>
 </div><span class="local">LOCAL WORKSPACE</span></div></nav>
 <header><div class="wrap"><span class="eyebrow">FEDERAL CONTRACT OPPORTUNITY ANALYZER</span><h1>{% block heading %}Find your next opportunity.{% endblock %}</h1><p>{% block subtitle %}Search real notices. Keep your research organized.{% endblock %}</p></div></header>
 <main class="wrap">

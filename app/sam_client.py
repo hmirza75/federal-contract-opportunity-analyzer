@@ -1,6 +1,8 @@
 """Small, read-only client for the official SAM.gov Opportunities API."""
 
 import re
+import json
+from urllib.parse import urlsplit, parse_qs
 from dataclasses import dataclass
 from datetime import date
 
@@ -8,6 +10,20 @@ import requests
 
 SEARCH_URL = "https://api.sam.gov/opportunities/v2/search"
 PAGE_SIZE = 10
+DESCRIPTION_PATHS = {"/prod/opportunities/v1/noticedesc", "/opportunities/v1/noticedesc"}
+
+
+def safe_description_url(value, notice_id):
+    """Retain only an official description path and matching notice ID; drop all other parameters."""
+    try:
+        parsed = urlsplit(value)
+        query = parse_qs(parsed.query)
+        if (parsed.scheme == "https" and parsed.netloc == "api.sam.gov" and parsed.path in DESCRIPTION_PATHS
+                and re.fullmatch(r"[a-fA-F0-9]{32}", notice_id) and query.get("noticeid") == [notice_id]):
+            return f"https://api.sam.gov{parsed.path}?noticeid={notice_id}"
+    except ValueError:
+        pass
+    return ""
 
 
 class SamError(Exception):
@@ -44,6 +60,7 @@ def normalize_opportunity(record):
     url = f"https://sam.gov/opp/{notice_id}/view" if re.fullmatch(r"[a-fA-F0-9]{32}", notice_id) else ""
     return {
         "notice_id": notice_id if url else "",
+        "description_url": safe_description_url(text(record.get("description")), notice_id),
         "title": text(record.get("title")) or "Untitled notice",
         "agency": text(record.get("fullParentPathName")) or text(record.get("department")),
         "solicitation": text(record.get("solicitationNumber")),
@@ -110,3 +127,41 @@ def search_opportunities(api_key: str, keyword: str, posted_from: date, posted_t
             or not isinstance(total, int) or isinstance(total, bool) or total < len(records)):
         raise SamError("SAM.gov returned an unexpected response format.")
     return SearchResult([normalize_opportunity(row) for row in records[:PAGE_SIZE]], total)
+
+
+def fetch_description(api_key, item):
+    from .analysis import html_to_text, MAX_TEXT
+    url = safe_description_url(item.get("description_url", ""), item["notice_id"])
+    if not url:
+        raise SamError("No supported description endpoint was supplied. Use the original notice or paste/upload its text.")
+    if not api_key.strip():
+        raise SamError("Configure your SAM.gov key and restart the app before loading a description.")
+    try:
+        with requests.get(url, params={"api_key": api_key.strip()}, timeout=(5, 25), allow_redirects=False, stream=True) as response:
+            if response.status_code != 200:
+                raise SamError(f"SAM.gov description request returned HTTP {response.status_code}. Try later or paste the original text.")
+            chunks, size = [], 0
+            for chunk in response.iter_content(65536):
+                size += len(chunk)
+                if size > 2 * 1024 * 1024:
+                    raise SamError("Description exceeds the download limit. Upload a shorter extract.")
+                chunks.append(chunk)
+            raw = b"".join(chunks).decode("utf-8", errors="replace")
+    except requests.RequestException:
+        raise SamError("Could not securely retrieve the description from SAM.gov. Try again later.") from None
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        payload = raw
+    if isinstance(payload, dict):
+        raw = payload.get("description", "")
+    elif isinstance(payload, str):
+        raw = payload
+    else:
+        raw = ""
+    if not isinstance(raw, str) or not raw.strip():
+        raise SamError("SAM.gov did not return description text.")
+    result = html_to_text(raw)
+    if len(result) > MAX_TEXT:
+        raise SamError("Description is too long. Paste or upload a shorter extract.")
+    return result

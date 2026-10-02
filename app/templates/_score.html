@@ -1,0 +1,5 @@
+<section class="panel"><div class="section-heading"><h2>Explainable match</h2><a href="{{ url_for('main.profile') }}">Edit capability profile</a></div>
+{% if match.score is not none %}<p class="score-number">{{ match.score }}<span>/100 relevance</span></p><p class="hint">{{ match.earned }} ÷ {{ match.possible }} configured points × 100 (rounded). Source-field coverage: {{ match.coverage }}%. Coverage does not measure document completeness.</p>
+<div class="table-wrap"><table><thead><tr><th>Criterion</th><th>Points</th><th>Evidence</th></tr></thead><tbody>{% for component in match.components %}<tr><td>{{ component.name }}</td><td>{{ component.earned }} / {{ component.weight }}</td><td>{{ component.detail }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p>Configure your profile to calculate a score. No capabilities are assumed.</p>{% endif %}
+{% for warning in match.warnings %}<p class="notice">{{ warning }}</p>{% endfor %}<p class="hint">Rule-based relevance only. Verify eligibility, capacity, competition restrictions, and the original solicitation before deciding to bid.</p></section>

@@ -8,8 +8,10 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from . import db
 from .deadlines import deadline_info, INACTIVE_STATUSES
 from .search_filters import FIELDS, NOTICE_TYPES, SET_ASIDES, STATES, validate_filters
+from .scoring import parse_profile, score_opportunity
 
-from .sam_client import SamError, search_opportunities
+from .sam_client import SamError, search_opportunities, fetch_description
+from .analysis import analyze_text, extract_upload, MAX_TEXT
 
 main = Blueprint("main", __name__)
 
@@ -62,8 +64,10 @@ def index():
             except SamError as exc:
                 error, status = str(exc), 503
     if result:
+        profile = db.get_profile()
         for item in result.opportunities:
             item["save_token"] = signer().dumps(item) if item["notice_id"] else ""
+            item["match"] = score_opportunity(item, profile)
     previous = url_for("main.index", **form, search=1, page=page-1) if page > 0 else None
     following = url_for("main.index", **form, search=1, page=page+1) if result and (page+1)*10 < result.total and page < 10000 else None
     return render_template("index.html", form=form, result=result, error=error, page=page,
@@ -95,7 +99,10 @@ def saved():
 
 @main.get("/saved/<notice_id>")
 def detail(notice_id):
-    return render_template("detail.html", opp=require_opportunity(notice_id), statuses=db.STATUSES)
+    item = require_opportunity(notice_id)
+    source_text = item["review_text"] or item["description"]
+    return render_template("detail.html", opp=item, statuses=db.STATUSES, match=score_opportunity(item, db.get_profile()),
+                           analysis=analyze_text(source_text), review_source=item["review_source"] if item["review_text"] else "SAM.gov description")
 
 
 @main.post("/saved/<notice_id>/update")
@@ -141,3 +148,60 @@ def export_saved(format):
     buffer = export_csv(items) if format == "csv" else export_excel(items)
     mimetype = "text/csv" if format == "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return send_file(buffer, mimetype=mimetype, as_attachment=True, download_name=f"saved-opportunities-{date.today()}.{format}")
+
+
+@main.route("/profile", methods=["GET", "POST"])
+def profile():
+    if request.method == "POST":
+        try:
+            data = parse_profile(request.form)
+        except ValueError as error:
+            flash(str(error), "error")
+            return render_template("profile.html", values=request.form, set_asides=SET_ASIDES), 400
+        db.save_profile(data)
+        flash("Capability profile saved locally. Scores now use these preferences.")
+        return redirect(url_for("main.profile"))
+    values = {key: ", ".join(value) for key, value in db.get_profile().items()}
+    return render_template("profile.html", values=values, set_asides=SET_ASIDES)
+
+
+@main.post("/saved/<notice_id>/description")
+def load_description(notice_id):
+    item = require_opportunity(notice_id)
+    try:
+        text = fetch_description(current_app.config["SAM_API_KEY"], item)
+        db.store_text(notice_id, text, "SAM.gov", description=True)
+        flash("Description loaded from SAM.gov. Any separate document review is preserved.")
+    except SamError as error:
+        flash(str(error), "error")
+    return redirect(url_for("main.detail", notice_id=notice_id))
+
+
+@main.post("/saved/<notice_id>/analyze")
+def review_document(notice_id):
+    require_opportunity(notice_id)
+    text = request.form.get("text", "").strip()
+    file = request.files.get("document")
+    try:
+        if file and file.filename and text:
+            raise ValueError("Choose either pasted text or a document, not both.")
+        if file and file.filename:
+            text = extract_upload(file)
+            source = "Uploaded PDF" if file.filename.lower().endswith(".pdf") else "Uploaded text file"
+        else:
+            source = "Pasted solicitation text"
+        if not text or len(text) > MAX_TEXT:
+            raise ValueError("Provide text between 1 and 150,000 characters.")
+        db.store_text(notice_id, text, source)
+        flash("Evidence review saved locally. Check the source passages and original document.")
+    except ValueError as error:
+        flash(str(error), "error")
+    return redirect(url_for("main.detail", notice_id=notice_id))
+
+
+@main.post("/saved/<notice_id>/clear-review")
+def clear_document(notice_id):
+    require_opportunity(notice_id)
+    db.store_text(notice_id, "", "")
+    flash("Document review cleared. A fetched SAM.gov description, if present, is now used for review.")
+    return redirect(url_for("main.detail", notice_id=notice_id))

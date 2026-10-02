@@ -33,6 +33,7 @@
           <span class="eyebrow">{{ opp.type or 'Notice type unavailable' }}</span>
           <h3>{% if opp.url %}<a href="{{ opp.url }}" target="_blank" rel="noopener noreferrer">{{ opp.title }}</a>{% else %}{{ opp.title }}{% endif %}</h3>
           <p class="agency">{{ opp.agency or 'Agency not provided' }}</p>
+          {% if opp.match.score is not none %}<p class="badge">Title / metadata match: {{ opp.match.score }}/100 · Save to see the breakdown</p>{% endif %}
           <dl>
             {% for label, value in [('Solicitation', opp.solicitation), ('NAICS', opp.naics), ('Set-aside', opp.set_aside), ('Place of performance', opp.location), ('Posted', opp.posted), ('Response deadline', opp.deadline), ('Active (as reported)', opp.active)] %}
             <div><dt>{{ label }}</dt><dd>{{ value or 'Not provided' }}</dd></div>

@@ -10,7 +10,8 @@ def deadline_info(value, now=None):
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
         return {"kind": "unknown", "label": "No usable deadline", "sort": "9999", "days": None}
-    days = (parsed.date() - now.date()).days
+    compare_date = parsed.astimezone(timezone.utc).date() if parsed.tzinfo else parsed.date()
+    days = (compare_date - now.astimezone(timezone.utc).date()).days
     # A timezone-free deadline can only be compared by calendar day.
     overdue = parsed < now if parsed.tzinfo else days < 0
     if overdue:
